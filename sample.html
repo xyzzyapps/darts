@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Spear - papercut duel</title>
+  <meta name="description" content="A papercut hoplite duel. You versus the bot. Five hits per round, best of ten." />
+  <meta name="theme-color" content="#c7663c" />
+
+  <!--
+    Hosted at https://xyzzyapps.github.io/spear/
+    X reads these tags and, on desktop, loads the page in the timeline as a Player Card.
+    The domain must pass X's Player Card validator before the inline player appears.
+    Do not add X-Frame-Options or a CSP frame-ancestors rule that blocks x.com.
+    Replace all absolute URLs if the repository is published under another name.
+  -->
+  <meta name="twitter:card" content="player" />
+  <meta name="twitter:title" content="Spear" />
+  <meta name="twitter:description" content="A papercut hoplite duel. You versus the bot. First to six rounds." />
+  <meta name="twitter:image" content="https://xyzzyapps.github.io/spear/preview.png" />
+  <meta name="twitter:image:alt" content="Two papercut Greek hoplites facing each other with spears and round shields." />
+  <meta name="twitter:player" content="https://xyzzyapps.github.io/spear/" />
+  <meta name="twitter:player:width" content="480" />
+  <meta name="twitter:player:height" content="270" />
+  <meta property="og:title" content="Spear" />
+  <meta property="og:description" content="A papercut hoplite duel. You versus the bot. First to six rounds." />
+  <meta property="og:image" content="https://xyzzyapps.github.io/spear/preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="628" />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%231a0c08'/%3E%3Cpath d='M32 12l14 20-14 20-14-20z' fill='%23b85b3a'/%3E%3C/svg%3E" />
+
+  <style>
+    :root {
+      color-scheme: light;
+      --cream: #f0e0c7;
+      --cream-bright: #f6ead6;
+      --ink: #1a0c08;
+      --terracotta: #c7663c;
+      --device: #b85b3a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      color: var(--cream);
+      font-family: "Trebuchet MS", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background:
+        radial-gradient(ellipse 62% 62% at 50% 46%, #c7663c 0%, #c7663c 40%, #bc5f39 70%, #a85533 100%);
+    }
+
+    #scene {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .grain, .vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .grain {
+      opacity: 0.055;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.8'/%3E%3C/svg%3E");
+    }
+
+    .vignette {
+      background:
+        radial-gradient(ellipse at 50% 44%, transparent 52%, rgba(64, 42, 25, 0.06) 76%, rgba(48, 30, 17, 0.18) 100%);
+      mix-blend-mode: multiply;
+    }
+
+    #hud {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .fighter-panel {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top, 0px));
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      text-shadow: 0 1px 0 rgba(26, 12, 8, 0.55);
+    }
+
+    .fighter-panel.player { left: 10px; align-items: flex-start; }
+    .fighter-panel.bot { right: 10px; align-items: flex-end; }
+
+    .name {
+      font-size: clamp(8px, 1.5vw, 12px);
+      letter-spacing: 2.2px;
+      font-weight: 700;
+      color: var(--cream-bright);
+    }
+
+    .pips {
+      display: flex;
+      gap: 3px;
+    }
+
+    .fighter-panel.bot .pips { flex-direction: row-reverse; }
+
+    .pip {
+      width: clamp(6px, 1.15vw, 10px);
+      height: clamp(6px, 1.15vw, 10px);
+      transform: rotate(45deg);
+      background: var(--cream);
+      border: 1px solid rgba(26, 12, 8, 0.7);
+      transition: background 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+    }
+
+    .pip.empty {
+      background: rgba(110, 20, 20, 0.70);
+      border-color: rgba(74, 12, 12, 0.90);
+      opacity: 0.9;
+    }
+
+    .score {
+      font-size: clamp(7px, 1.25vw, 10px);
+      letter-spacing: 1.6px;
+      opacity: 0.82;
+    }
+
+    .round-panel {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      width: 34%;
+      min-width: 120px;
+      text-align: center;
+      text-shadow: 0 1px 0 rgba(26, 12, 8, 0.55);
+    }
+
+    #round-label {
+      font-size: clamp(8px, 1.5vw, 12px);
+      letter-spacing: 2.4px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .timer {
+      margin: 4px auto 0;
+      width: 74%;
+      height: 2px;
+      background: rgba(240, 224, 199, 0.20);
+      overflow: hidden;
+    }
+
+    #timer-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--cream);
+      transition: width 0.2s linear;
+    }
+
+    #banner {
+      position: absolute;
+      top: 31%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: "Palatino Linotype", Palatino, "Times New Roman", serif;
+      font-size: clamp(16px, 4.2vw, 42px);
+      letter-spacing: 6px;
+      color: var(--cream-bright);
+      text-shadow: 0 2px 0 rgba(26, 12, 8, 0.45);
+      opacity: 0;
+      transition: opacity 0.16s ease;
+      white-space: nowrap;
+    }
+
+    #banner.show { opacity: 1; }
+
+    #overlay {
+      position: absolute;
+      top: 34%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 12px 8px;
+      text-align: center;
+      background: rgba(26, 12, 8, 0.58);
+      border: 1px solid rgba(240, 224, 199, 0.26);
+      border-radius: 4px;
+      box-shadow: 0 3px 0 rgba(26, 12, 8, 0.22);
+      backdrop-filter: blur(2px);
+      pointer-events: auto;
+    }
+
+    #overlay-title {
+      font-family: "Palatino Linotype", Palatino, "Times New Roman", serif;
+      font-size: clamp(11px, 2.4vw, 18px);
+      letter-spacing: 3px;
+      color: var(--cream-bright);
+      white-space: nowrap;
+    }
+
+    #overlay-sub {
+      font-size: clamp(7px, 1.35vw, 10px);
+      letter-spacing: 0.6px;
+      opacity: 0.82;
+      white-space: nowrap;
+    }
+
+    #start-button {
+      margin-top: 2px;
+      padding: 4px 12px;
+      border: none;
+      border-radius: 2px;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: clamp(8px, 1.5vw, 11px);
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    #start-button:hover { background: var(--cream-bright); }
+    #start-button:active { transform: translateY(1px); }
+
+    #controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4;
+      height: clamp(28px, 10vh, 44px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 8px;
+      background: linear-gradient(to bottom, rgba(26, 12, 8, 0), rgba(26, 12, 8, 0.72));
+      pointer-events: auto;
+    }
+
+    #desktop-hint {
+      font-size: clamp(7px, 1.35vw, 11px);
+      letter-spacing: 1.8px;
+      color: var(--cream);
+      opacity: 0.78;
+      white-space: nowrap;
+    }
+
+    #touch-controls {
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .control-button {
+      min-width: 42px;
+      height: clamp(20px, 7vh, 30px);
+      padding: 0 7px;
+      border: 1px solid rgba(240, 224, 199, 0.30);
+      border-radius: 3px;
+      background: rgba(26, 12, 8, 0.55);
+      color: var(--cream);
+      font-family: inherit;
+      font-size: clamp(7px, 1.35vw, 11px);
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .control-button:active {
+      background: rgba(240, 224, 199, 0.22);
+    }
+
+    @media (pointer: coarse) {
+      #desktop-hint { display: none; }
+      #touch-controls { display: flex; }
+    }
+
+    @media (pointer: fine) {
+      #touch-controls { display: none; }
+    }
+
+    .hidden { display: none !important; }
+
+    .no-ui #hud,
+    .no-ui #controls,
+    .no-ui #overlay {
+      display: none !important;
+    }
+
+    .preview #controls { display: none !important; }
+
+    #error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      max-width: 80%;
+      padding: 12px 16px;
+      background: rgba(26, 12, 8, 0.92);
+      border: 1px solid rgba(240, 224, 199, 0.3);
+      border-radius: 4px;
+      color: var(--cream);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene" role="img" aria-label="A papercut duel between two Greek hoplites. You control the red-crested warrior on the left."></canvas>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+
+  <div id="hud">
+    <div class="fighter-panel player">
+      <div class="name">YOU</div>
+      <div class="pips" id="player-pips"></div>
+      <div class="score" id="player-score">0</div>
+    </div>
+    <div class="round-panel">
+      <div id="round-label">ROUND 1 / 10</div>
+      <div class="timer"><div id="timer-fill"></div></div>
+    </div>
+    <div class="fighter-panel bot">
+      <div class="name">BOT</div>
+      <div class="pips" id="bot-pips"></div>
+      <div class="score" id="bot-score">0</div>
+    </div>
+    <div id="banner" aria-live="polite"></div>
+  </div>
+
+  <div id="controls">
+    <div id="desktop-hint">A D MOVE &middot; J ATTACK &middot; K BLOCK</div>
+    <div id="touch-controls">
+      <button class="control-button" id="btn-back" aria-label="Step back">BACK</button>
+      <button class="control-button" id="btn-forward" aria-label="Step forward">FWD</button>
+      <button class="control-button" id="btn-attack" aria-label="Attack">ATTACK</button>
+      <button class="control-button" id="btn-block" aria-label="Hold to block">BLOCK</button>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div id="overlay-title">YOU vs BOT</div>
+    <div id="overlay-sub">Red crest vs white crest. First to 6 rounds.</div>
+    <button id="start-button">START DUEL</button>
+  </div>
+
+  <div id="error" class="hidden"></div>
+
+  <script defer src="app.js"></script>
+</body>
+</html>

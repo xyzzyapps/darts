@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>VR & 3D Darts Championship - WebXR & Browser Game</title>
+  <meta name="description" content="Realistic tournament regulation darts in WebXR VR and 3D browser. Play with mouse, touch, or Meta Quest VR headset." />
+  <meta name="theme-color" content="#090d16" />
+
+  <!--
+    Hosted at https://xyzzyapps.github.io/darts/
+    X reads these tags and, on desktop, loads the page in the timeline as a Player Card.
+    The domain must pass X's Player Card validator before the inline player appears.
+    Do not add X-Frame-Options or a CSP frame-ancestors rule that blocks x.com.
+  -->
+  <meta name="twitter:card" content="player" />
+  <meta name="twitter:title" content="VR & 3D Darts Championship" />
+  <meta name="twitter:description" content="Realistic tournament regulation darts in WebXR VR and 3D browser. Play with mouse, touch, or Meta Quest VR headset." />
+  <meta name="twitter:image" content="https://xyzzyapps.github.io/darts/preview.png" />
+  <meta name="twitter:image:alt" content="Tournament regulation dartboard in a cozy pub with 3D darts and live chalkboard scoreboard." />
+  <meta name="twitter:player" content="https://xyzzyapps.github.io/darts/" />
+  <meta name="twitter:player:width" content="640" />
+  <meta name="twitter:player:height" content="360" />
+
+  <meta property="og:title" content="VR & 3D Darts Championship" />
+  <meta property="og:description" content="Realistic tournament regulation darts in WebXR VR and 3D browser. Play with mouse, touch, or Meta Quest VR headset." />
+  <meta property="og:image" content="https://xyzzyapps.github.io/darts/preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://xyzzyapps.github.io/darts/" />
+
+  <!-- iOS / Mobile App meta tags -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VR Darts" />
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23cc1c23'/><circle cx='50' cy='50' r='35' fill='%2318181c'/><circle cx='50' cy='50' r='20' fill='%231f7a3a'/><circle cx='50' cy='50' r='8' fill='%23cc1c23'/></svg>" />
+
+  <style>
+    :root {
+      --primary: #38bdf8;
+      --accent: #e63946;
+      --bg: #090d16;
+      --card-bg: rgba(15, 23, 42, 0.88);
+      --card-border: rgba(56, 189, 248, 0.28);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    #app {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    /* HUD UI Overlay */
+    #hud {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: max(10px, env(safe-area-inset-top, 10px)) max(12px, env(safe-area-inset-right, 12px)) max(10px, env(safe-area-inset-bottom, 10px)) max(12px, env(safe-area-inset-left, 12px));
+      transition: opacity 0.3s ease;
+    }
+
+    body.vr-active #hud {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .title-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .title-card h1 {
+      font-size: clamp(0.95rem, 2.5vw, 1.25rem);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #fff;
+    }
+
+    .title-card h1 span {
+      color: var(--accent);
+    }
+
+    #mode-indicator {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: clamp(0.65rem, 1.6vw, 0.72rem);
+      font-weight: 600;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* Main Score Display Widget */
+    .score-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 8px 20px;
+      text-align: center;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+      min-width: clamp(140px, 20vw, 220px);
+    }
+
+    .score-label {
+      font-size: clamp(0.6rem, 1.5vw, 0.72rem);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+    }
+
+    .score-number {
+      font-size: clamp(2.2rem, 6vw, 3.4rem);
+      font-weight: 900;
+      line-height: 1.05;
+      margin: 1px 0;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+    }
+
+    .round-info {
+      font-size: clamp(0.72rem, 1.8vw, 0.85rem);
+      color: var(--text-muted);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .round-score {
+      color: #4ade80;
+      font-weight: 800;
+    }
+
+    /* Action Controls Panel */
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .btn {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      font-size: clamp(0.72rem, 1.8vw, 0.82rem);
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.16s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      touch-action: manipulation;
+    }
+
+    .btn:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn.active {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    .btn.primary:hover {
+      background: linear-gradient(135deg, #0369a1, #075985);
+    }
+
+    .btn.pulse {
+      animation: pulseAnim 1.4s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+    }
+
+    select.btn {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 24px;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+
+    /* Floating Announcement Banner */
+    #hud-banner {
+      position: absolute;
+      top: 23%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: linear-gradient(135deg, rgba(230, 57, 70, 0.96), rgba(185, 28, 28, 0.96));
+      border: 2px solid #ff7b89;
+      color: #fff;
+      font-size: clamp(1.2rem, 3.5vw, 1.75rem);
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      padding: 10px 28px;
+      border-radius: 14px;
+      box-shadow: 0 12px 36px rgba(230, 57, 70, 0.5);
+      opacity: 0;
+      transition: all 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+      text-transform: uppercase;
+      text-align: center;
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    #hud-banner.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Power Meter Overlay (For Normal 3D Mode) */
+    #power-meter-container {
+      position: absolute;
+      bottom: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      z-index: 15;
+    }
+
+    #power-meter-container.active {
+      display: flex;
+    }
+
+    .power-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #38bdf8;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      white-space: nowrap;
+    }
+
+    .power-bar-bg {
+      width: clamp(180px, 45vw, 240px);
+      height: 14px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .power-sweet-spot {
+      position: absolute;
+      left: 68%;
+      width: 14%;
+      height: 100%;
+      background: rgba(74, 222, 128, 0.4);
+      border-left: 2px solid #4ade80;
+      border-right: 2px solid #4ade80;
+    }
+
+    #power-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #4ade80 75%, #ef4444 95%);
+      transition: width 0.04s linear;
+      border-radius: 8px;
+    }
+
+    /* Bottom Bar */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    /* Darts Throw Card */
+    .darts-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .darts-card-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    #hud-darts-list {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dart-badge {
+      font-size: clamp(0.7rem, 1.7vw, 0.78rem);
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 7px;
+      min-width: clamp(60px, 14vw, 78px);
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .dart-badge.empty {
+      background: rgba(30, 41, 59, 0.6);
+      color: #64748b;
+      border: 1px dashed #334155;
+    }
+
+    .dart-badge.hit {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid #4ade80;
+      color: #4ade80;
+    }
+
+    .dart-badge.miss {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #f87171;
+      color: #f87171;
+    }
+
+    /* Center Throw Button */
+    #btn-throw-now {
+      padding: 10px 22px;
+      font-size: clamp(0.85rem, 2.2vw, 0.98rem);
+      font-weight: 800;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.45);
+      white-space: nowrap;
+      min-height: 44px;
+    }
+
+    /* Camera Switcher Buttons */
+    .camera-switcher {
+      display: flex;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: clamp(0.7rem, 1.6vw, 0.78rem);
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .view-btn.active, .view-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: #fff;
+    }
+
+    /* Desktop & VR Controls Hint Box */
+    .help-hint {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-width: 300px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .help-hint b {
+      color: var(--primary);
+    }
+
+    /* WebXR VR Button */
+    #vr-button {
+      position: absolute !important;
+      bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 100 !important;
+      background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+      color: #ffffff !important;
+      border: 2px solid #38bdf8 !important;
+      border-radius: 30px !important;
+      padding: 9px 22px !important;
+      font-size: clamp(0.85rem, 2vw, 0.94rem) !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.5px !important;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.6) !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      white-space: nowrap !important;
+    }
+
+    #vr-button:hover {
+      transform: translateX(-50%) scale(1.04) !important;
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.9) !important;
+    }
+
+    /* Aim Crosshair for 3D desktop/touch mode */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0.55;
+    }
+
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: var(--primary);
+      box-shadow: 0 0 4px rgba(56, 189, 248, 0.8);
+    }
+
+    #crosshair::before {
+      top: 9px;
+      left: 0;
+      width: 20px;
+      height: 2px;
+    }
+
+    #crosshair::after {
+      top: 0;
+      left: 9px;
+      width: 2px;
+      height: 20px;
+    }
+
+    /* On-screen aim & throw prompt guide */
+    #aim-guide {
+      position: absolute;
+      bottom: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 5px 16px;
+      border-radius: 20px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #94a3b8;
+      pointer-events: none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      text-align: center;
+      white-space: nowrap;
+      z-index: 8;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    #aim-guide b {
+      color: #38bdf8;
+    }
+
+    /* Responsive / Mobile / Iframe Tweaks */
+    @media (max-width: 768px), (max-height: 460px) {
+      .help-hint {
+        display: none !important;
+      }
+      #aim-guide {
+        font-size: 0.68rem;
+        bottom: 66px;
+        padding: 4px 12px;
+      }
+      .title-card {
+        padding: 6px 10px;
+      }
+      .score-card {
+        padding: 6px 14px;
+        min-width: 120px;
+      }
+      .score-number {
+        font-size: 2.2rem;
+      }
+      #hud-darts-list .dart-badge {
+        padding: 4px 8px;
+        min-width: 58px;
+      }
+      #btn-throw-now {
+        padding: 8px 16px;
+      }
+      .camera-switcher {
+        display: none !important; /* Hide view switcher on small phone cards to save screen real-estate */
+      }
+    }
+
+    /* Very small iframe / Twitter card embedding (<= 520px width) */
+    @media (max-width: 520px) {
+      .top-bar {
+        gap: 6px;
+      }
+      .controls-panel {
+        gap: 4px;
+      }
+      .controls-row {
+        gap: 4px;
+      }
+      #btn-throw-style, #btn-fullscreen {
+        display: none;
+      }
+      .score-card {
+        min-width: 100px;
+      }
+      .score-number {
+        font-size: 1.9rem;
+      }
+      .bottom-bar {
+        gap: 8px;
+      }
+    }
+  </style>
+
+  <script>
+    // Disable context menu for touch/gameplay cleanliness
+    window.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    });
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="crosshair"></div>
+  <div id="aim-guide">🎯 <b>Tap or Click</b> to throw • <b>Drag up</b> to flick • <b>[Space]</b> for power</div>
+
+  <!-- HUD Interface -->
+  <div id="hud">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <!-- Title & Mode Status Badge -->
+      <div class="title-card interactive">
+        <h1>🎯 VR & 3D <span>DARTS</span></h1>
+        <div id="mode-indicator">🎮 <b>3D Browser Mode</b> (Touch & Mouse)</div>
+      </div>
+
+      <!-- Main Remaining / Target Score -->
+      <div class="score-card interactive">
+        <div class="score-label">POINTS REMAINING</div>
+        <div id="hud-score" class="score-number">301</div>
+        <div class="round-info">
+          <span>ROUND <b id="hud-round">1</b></span>
+          <span>•</span>
+          <span class="round-score" id="hud-round-score">+0</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="controls-panel interactive">
+        <div class="controls-row">
+          <select id="mode-select" class="btn" aria-label="Game Mode">
+            <option value="301" selected>🎯 301 Countdown</option>
+            <option value="501">🏆 501 Tournament</option>
+            <option value="around-clock">⏰ Around The Clock</option>
+            <option value="free-play">⚡ Free Play</option>
+          </select>
+          <button id="btn-next-turn" class="btn primary" title="Next Turn [N]">
+            Next Turn <span>[N]</span>
+          </button>
+          <button id="btn-reset" class="btn" title="Reset Game [R]">
+            ↺ Reset
+          </button>
+        </div>
+        <div class="controls-row">
+          <button id="btn-throw-style" class="btn" title="Switch throw style">
+            👆 Flick
+          </button>
+          <button id="btn-trajectory" class="btn active" title="Toggle arc preview [T]">
+            📐 Arc: ON
+          </button>
+          <button id="btn-sound" class="btn" title="Toggle audio">
+            🔊 Sound
+          </button>
+          <button id="btn-fullscreen" class="btn" title="Toggle Fullscreen">
+            ⛶
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Power Meter (for Precision Power mode in Normal 3D) -->
+    <div id="power-meter-container">
+      <div class="power-label">HOLD TO CHARGE • RELEASE IN SWEET SPOT</div>
+      <div class="power-bar-bg">
+        <div class="power-sweet-spot" title="Sweet Spot"></div>
+        <div id="power-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Center Floating Announcement Banner -->
+    <div id="hud-banner" aria-live="polite">GAME ON!</div>
+
+    <!-- Bottom Bar -->
+    <div class="bottom-bar">
+      <!-- Current Turn Darts -->
+      <div class="darts-card interactive">
+        <div class="darts-card-title">ROUND DARTS</div>
+        <div id="hud-darts-list">
+          <span class="dart-badge empty">Dart 1</span>
+          <span class="dart-badge empty">Dart 2</span>
+          <span class="dart-badge empty">Dart 3</span>
+        </div>
+      </div>
+
+      <!-- Quick Throw Button for Normal 3D / Touch Mode -->
+      <button id="btn-throw-now" class="btn primary interactive" title="Throw Dart [Space or Tap]">
+        🎯 THROW DART <span>[Space]</span>
+      </button>
+
+      <!-- Camera View Angle Switcher -->
+      <div class="camera-switcher interactive">
+        <button class="view-btn active" data-view="oche" title="Regulation Oche [1]">1. Oche</button>
+        <button class="view-btn" data-view="zoom" title="Board Zoom [2]">2. Zoom</button>
+        <button class="view-btn" data-view="scoreboard" title="Scoreboard Cam [3]">3. Board</button>
+        <button class="view-btn" data-view="free" title="Free Pub Cam [4]">4. Free</button>
+      </div>
+
+      <!-- Desktop & VR Controls Hint -->
+      <div class="help-hint interactive">
+        <div>🎮 <b>3D Mode:</b> Tap, click, or flick upward to throw. Press <b>[Space]</b> to power throw.</div>
+        <div>🥽 <b>VR Mode:</b> Click <b>ENTER VR</b> below to play in Meta Quest with real motion!</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

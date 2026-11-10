@@ -1,0 +1,19 @@
+{
+  "name": "vr-darts",
+  "version": "1.0.0",
+  "description": "Realistic WebXR VR Darts Game for Browsers",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev:https": "vite --host --https",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "vite": "^6.2.0"
+  }
+}
